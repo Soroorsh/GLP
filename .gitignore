@@ -2,3 +2,8 @@ output/*
 torch_home
 env
 *.csv
+# the Navon congruency manifest is a data artefact, not a result — keep it
+!data/navon_test_manifest.csv
+# SSL pilot runs: checkpoints and probe curves stay local
+runs/
+__pycache__/
