@@ -81,14 +81,37 @@ def build(name, device, input_size=None):
 
 
 @torch.no_grad()
-def features(model, tf, paths, device, batch=64):
+def features(model, tf, paths, device, batch=64, pool="default"):
+    """Pooled features for a list of images.
+
+    `pool` matters more than it looks. timm's default differs BETWEEN models —
+    DINOv3 ViTs pool by averaging patch tokens while CLIP, DINOv2 and supervised
+    ViTs return the CLS token. Comparing a mean-pooled model against CLS-pooled
+    ones confounds representation choice with whatever the benchmark is trying to
+    measure, so pin it explicitly:
+
+      "cls"  prefix token 0. ViT-family only; CNNs have no such token.
+      "avg"  mean over patch tokens, skipping CLS and any registers. The only
+             option that is meaningful for both ViTs and CNNs.
+      "default"  whatever the model ships with — for auditing, not comparison.
+    """
     out = []
+    prefix = getattr(model, "num_prefix_tokens", 1)
     for i in range(0, len(paths), batch):
         chunk = [tf(Image.open(p).convert("RGB")) for p in paths[i:i + batch]]
         x = torch.stack(chunk).to(device)
         with torch.autocast(device.type, dtype=torch.bfloat16,
                             enabled=(device.type == "cuda")):
-            f = model(x)
+            if pool == "default":
+                f = model(x)
+            else:
+                t = model.forward_features(x)
+                if t.ndim == 4:                      # CNN feature map [B,C,H,W]
+                    if pool == "cls":
+                        raise ValueError("cls pooling undefined for a CNN")
+                    f = t.mean(dim=(2, 3))
+                else:                                # ViT tokens [B, P+N, D]
+                    f = t[:, 0] if pool == "cls" else t[:, prefix:].mean(dim=1)
         out.append(f.float().cpu().numpy())
     return np.concatenate(out)
 
@@ -114,15 +137,15 @@ def load_navon(manifest, navon_root):
 
 
 def evaluate_model(name, shape_paths, shape_y, navon_paths, g, l, con,
-                   device, seed, input_size=None):
+                   device, seed, input_size=None, pool="default"):
     from sklearn.linear_model import LogisticRegression
     from sklearn.preprocessing import StandardScaler
     from sklearn.pipeline import make_pipeline
     from sklearn.model_selection import train_test_split
 
     model, tf, cfg = build(name, device, input_size)
-    fs = features(model, tf, shape_paths, device)
-    fn = features(model, tf, navon_paths, device)
+    fs = features(model, tf, shape_paths, device, pool=pool)
+    fn = features(model, tf, navon_paths, device, pool=pool)
     del model
     if device.type == "cuda":
         torch.cuda.empty_cache()
@@ -150,6 +173,7 @@ def evaluate_model(name, shape_paths, shape_y, navon_paths, g, l, con,
 
     return {
         "model": name,
+        "pool": pool,
         "input_size": cfg["input_size"][-1],
         "probe_heldout_acc": round(heldout, 4),
         "congruent_acc": round(cong_acc, 4),
@@ -173,6 +197,10 @@ def main():
     p.add_argument("--device", default="auto")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--min-probe-acc", type=float, default=0.90)
+    p.add_argument("--pool", default="avg", choices=["cls", "avg", "default"],
+                   help="avg (default) is the only pooling comparable across "
+                        "ViTs and CNNs; timm's per-model defaults are NOT "
+                        "consistent, so 'default' is for auditing only")
     p.add_argument("--input-size", type=int, default=None,
                    help="force one resolution for every model "
                         "(recommended: 224). Omit to use each "
@@ -191,7 +219,7 @@ def main():
     print(f"device={device}  shapes={len(shape_paths)}  navon={len(navon_paths)} "
           f"({con.sum()} congruent / {(~con).sum()} incongruent)\n")
 
-    fields = ["model", "input_size", "probe_heldout_acc", "congruent_acc",
+    fields = ["model", "pool", "input_size", "probe_heldout_acc", "congruent_acc",
               "global_precedence_index", "incongruent_local",
               "pooled_global_acc", "pooled_local_acc",
               "n_congruent", "n_incongruent"]
@@ -204,7 +232,7 @@ def main():
         try:
             row = evaluate_model(name, shape_paths, shape_y, navon_paths,
                                  g, l, con, device, args.seed,
-                                 args.input_size)
+                                 args.input_size, args.pool)
         except Exception as exc:                      # noqa: BLE001
             print(f"{name:34s} FAILED: {str(exc)[:60]}")
             continue
