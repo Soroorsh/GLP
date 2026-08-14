@@ -27,7 +27,25 @@ N_LOCAL="${N_LOCAL:-6}"
 echo "=== GPU ==="
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader || {
     echo "no nvidia-smi — this is not a GPU pod"; exit 1; }
-python3 -c 'import torch; print("torch", torch.__version__, "| cuda", torch.cuda.is_available())'
+
+# nvidia-smi succeeding is NOT enough: the driver can be visible while torch
+# still fails to initialise CUDA (notably a cu12.x build on a CUDA 13.x driver).
+# Without this gate train_ssl.py silently falls back to CPU and burns rental
+# hours at a few hundred times the intended speed.
+python3 - <<'PY' || exit 1
+import sys, torch
+ok = torch.cuda.is_available()
+print("torch", torch.__version__, "| cuda", ok)
+if not ok:
+    print()
+    print("ERROR: torch cannot initialise CUDA, so training would run on CPU.")
+    print("  Driver is visible to nvidia-smi, so this is a container/driver")
+    print("  mismatch, not a missing GPU. Usual fixes, in order:")
+    print("    1. restart the pod (clears a transient init failure)")
+    print("    2. redeploy on a host whose CUDA major version matches the")
+    print("       image — this image is cu128, so pick a CUDA 12.8 host")
+    sys.exit(1)
+PY
 
 echo
 echo "=== repo ==="
