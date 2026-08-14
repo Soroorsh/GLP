@@ -464,7 +464,19 @@ def main():
             stats, tokens = evaluate(encode, probe_images, args.img_size,
                                      ref_tokens=ref_tokens)
             if ref_tokens is None:
-                ref_tokens = tokens          # first probe is the Gram reference
+                ref_tokens = tokens          # provisional reference, see below
+
+            # Keep every probe's tokens. The live `gram_drift` column is measured
+            # against the FIRST probe, which is a near-random model — so it mostly
+            # tracks "how far from init", which rises during healthy training and
+            # says little about degradation. The reference that actually matters is
+            # the checkpoint where dense quality peaks, and that is only knowable
+            # afterwards. Saving the tokens (~12 MB per probe in fp16) lets
+            # regram.py recompute the column against any reference post hoc.
+            tok_dir = os.path.join(args.out, "probe_tokens")
+            os.makedirs(tok_dir, exist_ok=True)
+            torch.save(tokens.half().cpu(),
+                       os.path.join(tok_dir, f"epoch_{epoch:04d}.pt"))
             row = {"epoch": epoch, "step": step, "loss": round(avg, 4),
                    **{k: round(v, 5) for k, v in stats.items()}}
             with open(csv_path, "a", newline="") as f:
