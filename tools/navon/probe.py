@@ -49,11 +49,33 @@ import torch
 from PIL import Image
 
 
-def build(name, device):
+def build(name, device, input_size=None):
+    """Load a frozen backbone and its preprocessing.
+
+    `input_size` forces every model to see the same resolution. That matters
+    here: Navon figures are natively 128x128, so a model whose default config
+    upsamples to 518 resolves the small local elements far better than one that
+    upsamples to 224. Resolution would then correlate with model identity and
+    contaminate the comparison — part of any GPI difference would be input size
+    rather than architecture or training. Leave it unset only when you
+    deliberately want each model evaluated as its authors intended.
+    """
     import timm
-    model = timm.create_model(name, pretrained=True, num_classes=0)
+    kw = {}
+    if input_size is not None:
+        kw["img_size"] = input_size
+    try:
+        model = timm.create_model(name, pretrained=True, num_classes=0, **kw)
+    except TypeError:
+        # convnets and friends take no img_size argument; they are resolution
+        # agnostic, so the transform override below is enough
+        model = timm.create_model(name, pretrained=True, num_classes=0)
     model.eval().to(device)
+
     cfg = timm.data.resolve_data_config({}, model=model)
+    if input_size is not None:
+        cfg["input_size"] = (3, input_size, input_size)
+        cfg["crop_pct"] = 1.0
     tf = timm.data.create_transform(**cfg, is_training=False)
     return model, tf, cfg
 
@@ -91,13 +113,14 @@ def load_navon(manifest, navon_root):
     return paths, g, l, con
 
 
-def evaluate_model(name, shape_paths, shape_y, navon_paths, g, l, con, device, seed):
+def evaluate_model(name, shape_paths, shape_y, navon_paths, g, l, con,
+                   device, seed, input_size=None):
     from sklearn.linear_model import LogisticRegression
     from sklearn.preprocessing import StandardScaler
     from sklearn.pipeline import make_pipeline
     from sklearn.model_selection import train_test_split
 
-    model, tf, cfg = build(name, device)
+    model, tf, cfg = build(name, device, input_size)
     fs = features(model, tf, shape_paths, device)
     fn = features(model, tf, navon_paths, device)
     del model
@@ -150,6 +173,10 @@ def main():
     p.add_argument("--device", default="auto")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--min-probe-acc", type=float, default=0.90)
+    p.add_argument("--input-size", type=int, default=None,
+                   help="force one resolution for every model "
+                        "(recommended: 224). Omit to use each "
+                        "model's native config.")
     args = p.parse_args()
 
     device = (torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -176,7 +203,8 @@ def main():
     for name in args.models:
         try:
             row = evaluate_model(name, shape_paths, shape_y, navon_paths,
-                                 g, l, con, device, args.seed)
+                                 g, l, con, device, args.seed,
+                                 args.input_size)
         except Exception as exc:                      # noqa: BLE001
             print(f"{name:34s} FAILED: {str(exc)[:60]}")
             continue
