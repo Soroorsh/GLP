@@ -64,7 +64,14 @@ fi
 
 echo
 echo "=== dependencies ==="
-pip install --quiet --upgrade timm huggingface_hub pyarrow pillow matplotlib
+# Recent Runpod images ship a PEP 668 "externally managed" Python, which refuses
+# plain `pip install`. The container is disposable, so installing into the system
+# interpreter is fine — but only pass the flag if this pip understands it.
+PIP_FLAGS="--quiet --upgrade"
+if pip install --help 2>/dev/null | grep -q -- --break-system-packages; then
+    PIP_FLAGS="$PIP_FLAGS --break-system-packages"
+fi
+pip install $PIP_FLAGS timm huggingface_hub pyarrow pillow matplotlib
 
 echo
 echo "=== data (~2 GB, resumable) ==="
