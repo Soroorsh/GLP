@@ -70,7 +70,10 @@ echo
 echo "=== data (~2 GB, resumable) ==="
 python3 tools/spectral/prepare_imagenet100.py --out "$DATA"
 
-WORKERS=$(python3 -c "import os; print(min(os.cpu_count() or 4, 16))")
+# 8 crops per image makes loading the likely bottleneck, so use plenty of
+# workers — but cap by default, since more workers than the machine has cores
+# just adds contention. Override with WORKERS=... on a big host.
+WORKERS="${WORKERS:-$(python3 -c "import os; print(min(os.cpu_count() or 4, 16))")}"
 mkdir -p "$RUN"
 
 echo
