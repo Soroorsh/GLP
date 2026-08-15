@@ -1,0 +1,11 @@
+model,pool,input_size,probe_heldout_acc,congruent_acc,global_precedence_index,incongruent_local,pooled_global_acc,pooled_local_acc,n_congruent,n_incongruent
+resnet18,avg,224,1.0,0.9754,0.1311,0.8689,0.5533,0.9221,122,122
+resnet50.a1_in1k,avg,224,1.0,0.959,0.418,0.582,0.6885,0.7705,122,122
+convnext_tiny.fb_in1k,avg,224,1.0,0.8033,0.3197,0.6803,0.5615,0.7418,122,122
+convnext_base.fb_in22k_ft_in1k,avg,224,1.0,1.0,0.3361,0.6639,0.668,0.832,122,122
+vit_base_patch16_224.augreg2_in21k_ft_in1k,avg,224,1.0,0.9918,0.3852,0.6148,0.6885,0.8033,122,122
+vit_base_patch14_dinov2.lvd142m,avg,224,1.0,1.0,0.7951,0.2049,0.8975,0.6025,122,122
+vit_base_patch14_reg4_dinov2.lvd142m,avg,224,1.0,1.0,0.4918,0.5082,0.7459,0.7541,122,122
+vit_base_patch16_dinov3.lvd1689m,avg,224,1.0,1.0,0.7623,0.2377,0.8811,0.6189,122,122
+convnext_base.dinov3_lvd1689m,avg,224,1.0,1.0,0.2049,0.7951,0.6025,0.8975,122,122
+vit_base_patch16_clip_224.openai,avg,224,1.0,1.0,0.123,0.877,0.5615,0.9385,122,122

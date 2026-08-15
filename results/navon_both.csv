@@ -1,0 +1,11 @@
+model,gpi_avg,gpi_cls,gap_cls_minus_avg,congruent_avg,congruent_cls
+vit_base_patch16_clip_224.openai,0.123,0.2213,0.0983,1.0,1.0
+resnet18,0.1311,,,0.9754,
+convnext_base.dinov3_lvd1689m,0.2049,,,1.0,
+convnext_tiny.fb_in1k,0.3197,,,0.8033,
+convnext_base.fb_in22k_ft_in1k,0.3361,,,1.0,
+vit_base_patch16_224.augreg2_in21k_ft_in1k,0.3852,0.3689,-0.0163,0.9918,0.9918
+resnet50.a1_in1k,0.418,,,0.959,
+vit_base_patch14_reg4_dinov2.lvd142m,0.4918,0.5,0.0082,1.0,1.0
+vit_base_patch16_dinov3.lvd1689m,0.7623,0.2213,-0.541,1.0,1.0
+vit_base_patch14_dinov2.lvd142m,0.7951,0.2459,-0.5492,1.0,1.0

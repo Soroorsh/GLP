@@ -1,0 +1,6 @@
+model,pool,input_size,probe_heldout_acc,congruent_acc,global_precedence_index,incongruent_local,pooled_global_acc,pooled_local_acc,n_congruent,n_incongruent
+vit_base_patch16_224.augreg2_in21k_ft_in1k,cls,224,1.0,0.9918,0.3689,0.6311,0.6803,0.8115,122,122
+vit_base_patch14_dinov2.lvd142m,cls,224,1.0,1.0,0.2459,0.7541,0.623,0.877,122,122
+vit_base_patch14_reg4_dinov2.lvd142m,cls,224,1.0,1.0,0.5,0.5,0.75,0.75,122,122
+vit_base_patch16_dinov3.lvd1689m,cls,224,1.0,1.0,0.2213,0.7787,0.6107,0.8893,122,122
+vit_base_patch16_clip_224.openai,cls,224,1.0,1.0,0.2213,0.7787,0.6107,0.8893,122,122

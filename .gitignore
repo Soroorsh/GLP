@@ -7,5 +7,7 @@ env
 # SSL pilot runs: checkpoints and probe curves stay local
 runs/
 __pycache__/
+# result tables are the deliverable — keep them, despite the *.csv rule above
+!results/*.csv
 # probe token dumps are large binaries, keep them local
 results/*.tgz
